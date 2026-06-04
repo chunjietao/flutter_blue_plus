@@ -27,6 +27,13 @@ class _ScanScreenState extends State<ScanScreen> {
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
 
+  /// 按 RSSI 降序排列的扫描结果（信号越强排越前）
+  List<ScanResult> get _sortedScanResults {
+    final sorted = List<ScanResult>.from(_scanResults);
+    sorted.sort((a, b) => b.rssi.compareTo(a.rssi));
+    return sorted;
+  }
+
   // 当前已提交的关键字列表（用于实际扫描过滤）
   List<String> _activeKeywords = [];
 
@@ -290,9 +297,9 @@ class _ScanScreenState extends State<ScanScreen> {
               ListView.builder(
                 shrinkWrap: true,
                 controller: _scrollController,
-                itemCount: _scanResults.length,
+                itemCount: _sortedScanResults.length,
                 itemBuilder: (context, index) {
-                  final ScanResult result = _scanResults[index];
+                  final ScanResult result = _sortedScanResults[index];
                   return ScanResultTile(
                     index: index,
                     result: result,
