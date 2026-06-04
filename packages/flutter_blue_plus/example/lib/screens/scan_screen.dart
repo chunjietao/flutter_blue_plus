@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-import 'device_screen.dart';
-import '../utils/snackbar.dart';
-import '../widgets/system_device_tile.dart';
-import '../widgets/scan_result_tile.dart';
 import '../utils/extra.dart';
+import '../utils/snackbar.dart';
+import '../widgets/scan_result_tile.dart';
+import '../widgets/system_device_tile.dart';
+import 'device_screen.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -17,6 +17,7 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
+  final ScrollController _scrollController = ScrollController();
   List<BluetoothDevice> _systemDevices = [];
   List<ScanResult> _scanResults = [];
   bool _isScanning = false;
@@ -108,66 +109,6 @@ class _ScanScreenState extends State<ScanScreen> {
     return Future.delayed(Duration(milliseconds: 500));
   }
 
-  Widget buildScanButton() {
-    final button = _isScanning
-        ? ElevatedButton(
-            onPressed: onStopPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text("STOP"),
-          )
-        : ElevatedButton(
-            onPressed: onScanPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text("SCAN"),
-          );
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (_isScanning) buildSpinner(),
-        button,
-      ],
-    );
-  }
-
-  Widget buildSpinner() {
-    return const Padding(
-      padding: EdgeInsets.only(right: 20.0),
-      child: SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2.5),
-      ),
-    );
-  }
-
-  List<Widget> _buildSystemDeviceTiles() {
-    return _systemDevices
-        .map(
-          (d) => SystemDeviceTile(
-            device: d,
-            onOpen: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => DeviceScreen(device: d),
-                settings: RouteSettings(name: '/DeviceScreen'),
-              ),
-            ),
-            onConnect: () => onConnectPressed(d),
-          ),
-        )
-        .toList();
-  }
-
-  Iterable<Widget> _buildScanResultTiles() {
-    return _scanResults.map((r) => ScanResultTile(result: r, onTap: () => onConnectPressed(r.device)));
-  }
-
   @override
   Widget build(BuildContext context) {
     return ScaffoldMessenger(
@@ -175,14 +116,57 @@ class _ScanScreenState extends State<ScanScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Find Devices'),
-          actions: [buildScanButton(), const SizedBox(width: 15)],
+          actions: [
+            if (_isScanning) CircularProgressIndicator(strokeWidth: 2.5),
+            ElevatedButton(
+              onPressed: _isScanning ? onStopPressed : onScanPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isScanning ? Theme.of(context).colorScheme.error : Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(_isScanning ? "STOP" : "SCAN"),
+            ),
+            const SizedBox(width: 15),
+          ],
         ),
         body: RefreshIndicator(
           onRefresh: onRefresh,
           child: ListView(
+            controller: _scrollController,
             children: <Widget>[
-              ..._buildSystemDeviceTiles(),
-              ..._buildScanResultTiles(),
+              ListView.builder(
+                shrinkWrap: true,
+                controller: _scrollController,
+                itemCount: _systemDevices.length,
+                itemBuilder: (context, index) {
+                  final BluetoothDevice device = _systemDevices[index];
+                  return SystemDeviceTile(
+                    device: device,
+                    onOpen: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => DeviceScreen(device: device),
+                          settings: RouteSettings(name: '/DeviceScreen'),
+                        ),
+                      );
+                    },
+                    onConnect: () => onConnectPressed(device),
+                  );
+                },
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                controller: _scrollController,
+                itemCount: _scanResults.length,
+                itemBuilder: (context, index) {
+                  final ScanResult result = _scanResults[index];
+                  return ScanResultTile(
+                    index: index,
+                    result: result,
+                    onTap: () => onConnectPressed(result.device),
+                  );
+                },
+              ),
             ],
           ),
         ),

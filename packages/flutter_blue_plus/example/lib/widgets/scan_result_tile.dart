@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class ScanResultTile extends StatefulWidget {
-  const ScanResultTile({super.key, required this.result, this.onTap});
-
+  final int index;
   final ScanResult result;
   final VoidCallback? onTap;
+
+  const ScanResultTile({
+    super.key,
+    required this.index,
+    required this.result,
+    this.onTap,
+  });
 
   @override
   State<ScanResultTile> createState() => _ScanResultTileState();
@@ -56,34 +62,6 @@ class _ScanResultTileState extends State<ScanResultTile> {
     return _connectionState == BluetoothConnectionState.connected;
   }
 
-  Widget _buildTitle(BuildContext context) {
-    if (widget.result.device.platformName.isNotEmpty) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            widget.result.device.platformName,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            widget.result.device.remoteId.str,
-            style: Theme.of(context).textTheme.bodySmall,
-          )
-        ],
-      );
-    } else {
-      return Text(widget.result.device.remoteId.str);
-    }
-  }
-
-  Widget _buildConnectButton(BuildContext context) {
-    return TextButton(
-      onPressed: widget.result.advertisementData.connectable ? widget.onTap : null,
-      child: isConnected ? const Text('Open') : const Text('Connect'),
-    );
-  }
-
   Widget _buildAdvRow(BuildContext context, String title, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -109,10 +87,43 @@ class _ScanResultTileState extends State<ScanResultTile> {
   @override
   Widget build(BuildContext context) {
     var adv = widget.result.advertisementData;
+    final String? name = widget.result.device.platformName.isNotEmpty
+        ? widget.result.device.platformName
+        : widget.result.device.advName.isNotEmpty
+            ? widget.result.device.advName
+            : null;
     return ExpansionTile(
-      title: _buildTitle(context),
-      leading: Text(widget.result.rssi.toString()),
-      trailing: _buildConnectButton(context),
+      leading: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${widget.index + 1}',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          Text(widget.result.rssi.toString()),
+        ],
+      ),
+      title: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            name ?? 'Unknown Device',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.green,
+            ),
+          ),
+          Text(
+            widget.result.device.remoteId.str,
+            style: Theme.of(context).textTheme.bodySmall,
+          )
+        ],
+      ),
+      trailing: TextButton(
+        onPressed: widget.result.advertisementData.connectable ? widget.onTap : null,
+        child: isConnected ? const Text('Open') : const Text('Connect'),
+      ),
       children: <Widget>[
         if (adv.advName.isNotEmpty) _buildAdvRow(context, 'Name', adv.advName),
         if (adv.txPowerLevel != null) _buildAdvRow(context, 'Tx Power Level', '${adv.txPowerLevel}'),
